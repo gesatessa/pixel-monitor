@@ -50,3 +50,21 @@ Now you can investigate
 SELECT email, date_joined, is_staff FROM core_user;
 
 ```
+
+## User API
+
+```sh
+docker compose run --rm api python manage.py startapp user
+```
+
+Now we can create a user. Also possible via the api doc `http://localhost:8000/api/docs/`
+```sh
+curl -X 'POST' \
+  'http://localhost:8000/api/user/create/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "email": "angel@hotmil.com",
+  "password": "Texas429"
+}'
+```
