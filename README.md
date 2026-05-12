@@ -57,7 +57,7 @@ SELECT email, date_joined, is_staff FROM core_user;
 docker compose run --rm api python manage.py startapp user
 ```
 
-Now we can create a user. Also possible via the api doc `http://localhost:8000/api/docs/`
+Now we can create/register a user. Also possible via the api doc `http://localhost:8000/api/docs/`
 ```sh
 curl -X 'POST' \
   'http://localhost:8000/api/user/create/' \
@@ -68,3 +68,40 @@ curl -X 'POST' \
   "password": "Texas429"
 }'
 ```
+
+### Auth
+
+A user can login:
+```sh
+curl -X 'POST' \
+  'http://localhost:8000/api/user/token/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "email": "kimi@info.me",
+  "password": "Kanada71"
+}'
+
+# {
+#   "token": "b10d148ed1c6564237ae070569a1cffb27953716"
+# }
+
+TOKEN=b10d148ed1c6564237ae070569a1cffb27953716
+curl -i http://localhost:8000/api/user/me/ \
+  -H "Authorization: Token $TOKEN"
+
+# update
+curl -X 'PATCH' \
+  'http://localhost:8000/api/user/me/' \
+  -H "Authorization: Token $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "email": "kimi@info.me",
+  "password": "Kanada92"
+}'
+
+```
+
+📢 In shells:
+'single quotes' → literal text
+"double quotes" → variable expansion happens
