@@ -1,0 +1,6 @@
+Django
+djangorestframework
+django-cors-headers
+psycopg[binary] # psycopg v3
+drf_spectacular
+djangorestframework-simplejwt

@@ -1,0 +1,43 @@
+services:
+  api:
+    build:
+      context: .
+      # relative to the context, so it will look for the Dockerfile in ./services/admin/Dockerfile
+      dockerfile: ./Dockerfile
+    user: "1000:1000"
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: admin-db
+      DB_USER: ${PG_USER}
+      DB_PASS: ${PG_PASS}
+      DB_NAME: ${PG_DB}
+    volumes:
+      - .:/code
+    command: >
+      sh -c "python manage.py migrate &&
+            python manage.py runserver 0.0.0.0:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17.9
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data-admin:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASS}
+      POSTGRES_DB: ${PG_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admino -d admindb"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  pg-data-admin:
