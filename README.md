@@ -74,7 +74,7 @@ curl -X 'POST' \
 A user can login:
 ```sh
 export PAYLOAD='{
-  "email": "angel@hotmil.com",
+  "email": "angel@hotmil.io",
   "password": "Texas429"
 }'
 
@@ -164,3 +164,76 @@ curl -X POST http://localhost:8000/api/movies/1/review/ \
     "comment": "Great movie."
   }'
 ```
+
+### Poster
+Image uploads require multipart/form-data.
+
+```sh
+# @ => upload this file
+curl -X POST \
+  http://localhost:8000/api/movies/ \
+  -H "Authorization: Token $ADMIN_TOKEN" \
+  -F "title=Whiplash" \
+  -F "description=Jazz drummer pushed to the edge" \
+  -F "release_year=2014" \
+  -F "poster=@./posters/whiplash.png"
+
+# # you may need to run
+# sudo chown -R 1000:1000 media
+# chown -R 1000:1000 /code/media
+
+curl -X POST \
+  http://localhost:8000/api/movies/ \
+  -H "Authorization: Token $ADMIN_TOKEN" \
+  -F "title=Marriage Story" \
+  -F "description=An emotional drama that follows a couple navigating love, separation, and the challenges of divorce." \
+  -F "release_year=2019" \
+  -F "poster=@./posters/mar_story.png"
+
+
+curl http://localhost:8000/api/user/me/ \
+  -H 'Authorization: Token $ADMIN_TOKEN'
+
+curl -X 'POST' \
+  'http://localhost:8000/api/movies/1/review/' \
+  -H "Authorization: Token $ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "rating": 4,
+  "comment": "A gripping story about ambition, discipline, and obsession."
+}'
+
+curl -X 'POST' \
+  'http://localhost:8000/api/movies/1/like/' \
+  -H 'accept: */*' \
+  -H "Authorization: Token $ADMIN_TOKEN" \
+  -d ''
+
+curl -X 'POST' \
+  'http://localhost:8000/api/movies/2/review/' \
+  -H "Authorization: Token $ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "rating": 5,
+  "comment": "Emotional, raw, and deeply human from start to finish."
+}'
+
+curl  'http://localhost:8000/api/movies/' | jq
+
+```
+
+## NeXT
+
+We now have enough architecture to move into:
+- pagination
+- filtering
+- search
+- ordering
+- JWT auth
+- permissions per object
+- nested routes
+- tests
+- async tasks
+- production deployment
+
+At this point our project stopped being CRUD practice and became a real API.

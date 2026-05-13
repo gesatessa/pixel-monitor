@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from core.models import Movie, Review, Like
-from .serializers import MovieSerializer, CreateReviewSerializer
+from .serializers import EmptySerializer, MovieSerializer, CreateReviewSerializer
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -21,9 +21,14 @@ class MovieViewSet(viewsets.ModelViewSet):
     authentication_classes = [authentication.TokenAuthentication]
     permission_classes = [IsAdminOrReadOnly]
 
+    # Override get_serializer_class to return different serializers for different actions
+    # in the swagger docs, it will show the correct request body for each action (e.g., review, like)
     def get_serializer_class(self):
         if self.action == 'review':
             return CreateReviewSerializer
+        
+        if self.action == 'like':
+            return EmptySerializer
 
         return MovieSerializer
 

@@ -4,6 +4,10 @@ from rest_framework import serializers
 from core.models import Movie, Review, Like
 
 
+class EmptySerializer(serializers.Serializer):
+    pass
+
+
 class ReviewSerializer(serializers.ModelSerializer):
     user = serializers.EmailField(source='user.email', read_only=True)
 
@@ -28,6 +32,7 @@ class MovieSerializer(serializers.ModelSerializer):
             'average_rating',
             'likes_count',
             'reviews',
+            'poster',
         ]
 
     def get_average_rating(self, obj):
