@@ -1,11 +1,22 @@
 from django.db.models import Avg
 from rest_framework import serializers
 
-from core.models import Movie
+from core.models import Movie, Review, Like
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ['id', 'user', 'rating', 'comment', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
 
 
 class MovieSerializer(serializers.ModelSerializer):
-    # average_rating = serializers.SerializerMethodField()
+    reviews = ReviewSerializer(many=True, read_only=True)
+    average_rating = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Movie
@@ -14,5 +25,20 @@ class MovieSerializer(serializers.ModelSerializer):
             'title',
             'description',
             'release_year',
+            'average_rating',
+            'likes_count',
+            'reviews',
         ]
 
+    def get_average_rating(self, obj):
+        result = obj.reviews.aggregate(avg=Avg('rating'))
+        return result['avg']
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+
+class CreateReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['rating', 'comment']

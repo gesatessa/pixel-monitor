@@ -145,3 +145,22 @@ curl -X 'POST' \
   }'
 
 ```
+
+Routers automatically generate URL patterns for ViewSets and custom @action routes.
+
+```sh
+curl http://localhost:8000/api/movies/3/ | jq
+
+# like a movie
+curl -X POST http://localhost:8000/api/movies/1/like/ \
+  -H "Authorization: Token $TOKEN"
+
+# post a review
+curl -X POST http://localhost:8000/api/movies/1/review/ \
+  -H "Authorization: Token $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 5,
+    "comment": "Great movie."
+  }'
+```
