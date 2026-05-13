@@ -29,7 +29,8 @@ def check_health(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('healthz/', check_health, name='healthz'),
-    path('api/user/', include('user.urls'),)
+    path('api/user/', include('user.urls')),
+    path('api/', include('movie.urls')),
 ]
 
 # For API schema and documentation -----

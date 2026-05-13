@@ -73,6 +73,11 @@ curl -X 'POST' \
 
 A user can login:
 ```sh
+export PAYLOAD='{
+  "email": "angel@hotmil.com",
+  "password": "Texas429"
+}'
+
 curl -X 'POST' \
   'http://localhost:8000/api/user/token/' \
   -H 'accept: application/json' \
@@ -81,6 +86,11 @@ curl -X 'POST' \
   "email": "kimi@info.me",
   "password": "Kanada71"
 }'
+
+curl -X 'POST' \
+  'http://localhost:8000/api/user/token/' \
+  -H 'Content-Type: application/json' \
+  -d "$PAYLOAD"
 
 # {
 #   "token": "b10d148ed1c6564237ae070569a1cffb27953716"
@@ -105,3 +115,33 @@ curl -X 'PATCH' \
 📢 In shells:
 'single quotes' → literal text
 "double quotes" → variable expansion happens
+
+
+## Movie API
+
+Create the app:
+```sh
+docker compose run --rm api python manage.py startapp movie
+
+# add 'movie' to INSTALLED_APPS
+
+# after adding the model, make migrations:
+docker compose run --rm api python manage.py makemigrations core
+```
+
+```sh
+curl 'http://localhost:8000/api/movies/' \
+  -H 'accept: application/json'
+
+
+curl -X 'POST' \
+  'http://localhost:8000/api/movies/' \
+  -H "Authorization: Token $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "Whiplash",
+    "description": "intense music drama",
+    "release_year": 2014
+  }'
+
+```
