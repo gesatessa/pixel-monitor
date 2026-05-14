@@ -237,3 +237,51 @@ We now have enough architecture to move into:
 - production deployment
 
 At this point our project stopped being CRUD practice and became a real API.
+
+
+## cors
+
+```sh
+pip install django-cors-headers
+
+```
+
+```py
+INSTALLED_APPS = [
+    ...
+    "corsheaders",
+]
+
+MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    ...
+]
+
+# allow frontend
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+
+```
+Return absolute media URLs consistently.
+
+Sometimes DRF returns relative paths depending on serializer context.
+
+Update serializer:
+```py
+class MovieSerializer(serializers.ModelSerializer):
+    poster = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Movie
+        fields = [...]
+
+    def get_poster(self, obj):
+        request = self.context.get('request')
+
+        if obj.poster and request:
+            return request.build_absolute_uri(obj.poster.url)
+
+        return None
+```
+

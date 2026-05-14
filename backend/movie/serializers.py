@@ -21,6 +21,7 @@ class MovieSerializer(serializers.ModelSerializer):
     reviews = ReviewSerializer(many=True, read_only=True)
     average_rating = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
+    # poster = serializers.SerializerMethodField()
 
     class Meta:
         model = Movie
@@ -41,6 +42,16 @@ class MovieSerializer(serializers.ModelSerializer):
 
     def get_likes_count(self, obj):
         return obj.likes.count()
+    
+    # def get_poster(self, obj):
+    #     request = self.context.get('request')
+
+    #     if obj.poster and request:
+    #         return request.build_absolute_uri(
+    #             obj.poster.url
+    #         )
+
+    #     return None
 
 
 class CreateReviewSerializer(serializers.ModelSerializer):
