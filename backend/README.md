@@ -285,3 +285,33 @@ class MovieSerializer(serializers.ModelSerializer):
         return None
 ```
 
+
+## Static & Media
+
+`STATIC_ROOT` is where `python manage.py collectstatic` collects files before serving them. `WhiteNoise` serves from there.
+
+We do NOT need `MEDIA_ROOT` anymore in production because uploads are going to S3.
+
+Mental model:
+- `Gunicorn` serves Django
+- `WhiteNoise` serves static
+- `S3` serves media
+
+
+### Migration Step:
+build image
+    ->
+run migration task
+    ->
+deploy service
+
+```sh
+aws ecs run-task ...
+python manage.py migrate
+```
+
+### CI Pipeline
+run tests
+build docker image
+collectstatic inside image
+push image to ECR

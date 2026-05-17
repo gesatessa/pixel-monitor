@@ -4,6 +4,8 @@ services:
       context: .
       # relative to the context, so it will look for the Dockerfile in ./services/admin/Dockerfile
       dockerfile: ./Dockerfile
+      args:
+        - DEV=true
     user: "1000:1000"
     ports:
       - "8000:8000"
@@ -12,12 +14,14 @@ services:
       DB_USER: ${PG_USER}
       DB_PASS: ${PG_PASS}
       DB_NAME: ${PG_DB}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
     volumes:
       - .:/code
       # - media-data:/code/media
     command: >
       sh -c "python manage.py migrate &&
-            python manage.py runserver 0.0.0.0:8000"
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     depends_on:
       db:
         condition: service_healthy

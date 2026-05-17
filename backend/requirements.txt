@@ -5,3 +5,8 @@ psycopg[binary] # psycopg v3
 drf_spectacular
 djangorestframework-simplejwt
 pillow
+# production only
+gunicorn 
+whitenoise
+django-storages
+boto3
