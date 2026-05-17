@@ -224,3 +224,7 @@ node_modules/
 # django -----
 backend/staticfiles/
 backend/media/
+
+# terraform -----
+deploy/.terraform/
+
