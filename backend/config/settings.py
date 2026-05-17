@@ -25,10 +25,11 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG") == "1"
+print(f"DEBUG mode is {'ON' if DEBUG else 'OFF'}")
 
 ALLOWED_HOSTS = []
 ALLOWED_HOSTS += os.getenv("ALLOWED_HOSTS", "").split(",")
-
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
 # Application definition
 
@@ -142,7 +143,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-
+STATIC_ROOT = BASE_DIR / "staticfiles"
 # ======================================================= #
 AUTH_USER_MODEL = "core.User"
 
@@ -155,15 +156,18 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # cors settings -----
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    f"http://{HOST_IP}:5173"
+    for HOST_IP in os.getenv("ALLOWED_HOSTS", "").split(",") if HOST_IP
 ]
+print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+
 
 if not DEBUG:
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
     AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
 
     AWS_DEFAULT_ACL = None
-    AWS_QUERYSTRING_AUTH = True
+    AWS_QUERYSTRING_AUTH = False
     AWS_QUERYSTRING_EXPIRE = 300
     AWS_S3_FILE_OVERWRITE = False
 

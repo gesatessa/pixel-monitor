@@ -220,3 +220,7 @@ __marimo__/
 # Dependency directories
 node_modules/
 
+
+# django -----
+backend/staticfiles/
+backend/media/

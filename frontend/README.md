@@ -10,3 +10,8 @@ npm install axios react-router-dom
 
 
 ```
+
+run locally
+```sh
+npm run dev -- --host
+```
