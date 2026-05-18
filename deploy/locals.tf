@@ -11,4 +11,5 @@ locals {
     }
   }
 
+  postgres_instance = var.is_production ? aws_db_instance.postgres_prod[0] : aws_db_instance.postgres[0]
 }

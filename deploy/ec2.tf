@@ -55,6 +55,14 @@ resource "aws_vpc_security_group_egress_rule" "ec2_http_out" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
+resource "aws_vpc_security_group_egress_rule" "ec2_to_rds_postgres" {
+  security_group_id            = aws_security_group.ec2_ssm_sg.id
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.rds_postgres.id
+}
+
 # EC2 instance to test SSM connectivity
 resource "aws_instance" "ssm_box" {
   ami                    = data.aws_ssm_parameter.al2023.value
@@ -70,4 +78,26 @@ resource "aws_instance" "ssm_box" {
   tags = {
     Name = "${local.prefix}-ssm-box"
   }
+}
+
+# This policy allows the EC2 instance to read the RDS credentials from Secrets Manager, 
+#which is necessary for our SSM box to connect to the RDS instance and run tests.
+resource "aws_iam_role_policy" "ec2_read_rds_secret" {
+  name = "${local.prefix}-ec2-read-rds-secret"
+  role = aws_iam_role.ec2_ssm_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+
+        Resource = local.postgres_instance.master_user_secret[0].secret_arn
+      }
+    ]
+  })
 }

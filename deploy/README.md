@@ -76,5 +76,33 @@ aws ec2 describe-instances \
 # }
 
 aws ssm start-session --target $SSM_BOX_ID
+
+## RDS 
+SECRET_ID="arn:aws:secretsmanager:us-east-1:802838070254:secret:rds!db-8762ee7c-03e6-46b8-a67c-0d089f6422d3-4XDFfg"
+
+SECRET_JSON=$(aws secretsmanager get-secret-value \
+  --secret-id ${SECRET_ID} \
+  --query SecretString \
+  --output text)
+echo $SECRET_JSON
+
+# {"username":"appuser","password":"J$?$L8-F_vF$uU)EJsuha8wE3|*8"}
+
+# sudo dnf install -y jq nmap-ncat postgresql17
+
+export PGHOST="pixel-monitor-default-postgres.cf7ttjzo2qnh.us-east-1.rds.amazonaws.com"
+export PGPORT=5432
+export PGUSER=$(echo "$SECRET_JSON" | jq -r .username)
+export PGPASSWORD=$(echo "$SECRET_JSON" | jq -r .password)
+export PGDATABASE=pixeldb
+
+psql
+
+# verify:
+# select current_user, current_database();
+# select version();
+# select now();
+# create table if not exists healthcheck_test(id int);
+# \dt
 ```
 
