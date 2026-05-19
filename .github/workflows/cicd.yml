@@ -1,0 +1,48 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: pixel-monitor
+  ECR_REPOSITORY: pixel-monitor
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::802838070254:role/github-actions-eks-deployer
+          aws-region: us-east-1
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - run: |
+          docker build -t $ECR_REPOSITORY:${GITHUB_SHA} .
+
+      - run: |
+          docker tag $ECR_REPOSITORY:${GITHUB_SHA} \
+          802838070254.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:${GITHUB_SHA}
+
+      - run: |
+          docker push \
+          802838070254.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPOSITORY:${GITHUB_SHA}
+
+      - run: |
+          aws eks update-kubeconfig \
+            --region $AWS_REGION \
+            --name $CLUSTER_NAME
+
+      - run: |
+          kubectl rollout restart deployment/django-app
