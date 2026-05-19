@@ -24,7 +24,7 @@ from rest_framework.response import Response
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def check_health(request):
-    return Response({'status': 'OK!!!'})
+    return Response({'status': 'OK!!!!!'})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
