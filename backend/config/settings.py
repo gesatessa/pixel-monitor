@@ -55,7 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise must come right after SecurityMiddleware
+    # 'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise must come right after SecurityMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -162,23 +162,113 @@ CORS_ALLOWED_ORIGINS = [
 print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
 
 
+# if not DEBUG:
+#     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+#     AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
+
+#     AWS_DEFAULT_ACL = None
+#     AWS_QUERYSTRING_AUTH = False
+#     AWS_QUERYSTRING_EXPIRE = 300
+#     AWS_S3_FILE_OVERWRITE = False
+
+#     # "default"     -> where FileField/ImageField uploads go
+#     # "staticfiles" -> how Django handles collectstatic/static assets
+#     STORAGES = {
+#         "default": {
+#             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+#         },
+#         "staticfiles": {
+#             # "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+#             # "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+#             "BACKEND": "storages.backends.s3.S3Storage",
+#         },
+#     }
+
 if not DEBUG:
+    # =========================================================
+    # AWS S3 CONFIG
+    # =========================================================
+
+    # Your S3 bucket name
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+
+    # AWS region where the bucket exists
     AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
 
-    AWS_DEFAULT_ACL = None
+    # Don't generate signed temporary URLs for public files
+    # Without this, S3 URLs become ugly signed URLs
     AWS_QUERYSTRING_AUTH = False
-    AWS_QUERYSTRING_EXPIRE = 300
+
+    # Don't overwrite files with same name
     AWS_S3_FILE_OVERWRITE = False
 
-    # "default"     -> where FileField/ImageField uploads go
-    # "staticfiles" -> how Django handles collectstatic/static assets
+    # Required by django-storages
+    AWS_DEFAULT_ACL = None
+
+    # =========================================================
+    # STATIC FILES
+    # =========================================================
+    #
+    # collectstatic will upload files into:
+    #
+    # s3://YOUR_BUCKET/static/
+    #
+    # Example:
+    # s3://my-bucket/static/admin/css/base.css
+    #
+    AWS_LOCATION = "static"
+
+    # Public URL where Django will look for static files
+    #
+    # Example generated URL:
+    # https://my-bucket.s3.amazonaws.com/static/admin/css/base.css
+    #
+    STATIC_URL = (
+        f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/"
+        f"{AWS_LOCATION}/"
+    )
+
+    # =========================================================
+    # DJANGO STORAGE BACKENDS
+    # =========================================================
+    #
+    # "default"
+    #   -> FileField/ImageField uploads
+    #
+    # "staticfiles"
+    #   -> collectstatic uploads
+    #
     STORAGES = {
+        # MEDIA FILES
+        #
+        # user uploads:
+        # profile pictures
+        # videos
+        # etc.
+        #
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "storages.backends.s3.S3Storage",
         },
+
+        # STATIC FILES
+        #
+        # admin css/js
+        # DRF css/js
+        # your frontend assets
+        #
         "staticfiles": {
-            # "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            "BACKEND": "storages.backends.s3.S3Storage",
         },
     }
+
+    # ========================================================
+    # CORS
+    # ========================================================
+
+    CORS_ALLOWED_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+
+    print(f"+++ CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")

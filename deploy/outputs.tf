@@ -17,3 +17,7 @@ output "postgres_address" {
 output "postgres_secret_arn" {
   value = local.postgres_instance.master_user_secret[0].secret_arn
 }
+
+output "alb_dns" {
+  value = aws_lb.ecs.dns_name
+}

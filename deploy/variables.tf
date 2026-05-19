@@ -2,6 +2,10 @@ variable "project_name" {
   default = "pixel-monitor"
 }
 
+variable "aws_region" {
+  default = "us-east-1"
+}
+
 # network
 variable "vpc_cidr" {
   default = "10.0.0.0/16"
@@ -34,4 +38,43 @@ variable "db" {
     backup_retention_days = optional(number, 7)
   })
   default = {}
+}
+
+# API Container
+variable "api_container" {
+  description = "API container configuration"
+  type = object({
+    name  = optional(string, "api")
+    image = optional(string, "802838070254.dkr.ecr.us-east-1.amazonaws.com/pixel-monitor:v4")
+    port  = optional(number, 8000)
+  })
+  default = {}
+}
+
+# ECS -----
+variable "ecs" {
+  description = "ECS configuration"
+  type = object({
+    desired_count = optional(number, 2)
+    cpu           = optional(number, 256) # 0.25 vCPU
+    memory        = optional(number, 512) # 0.5 GB
+  })
+  default = {}
+}
+
+variable "AWS_STORAGE_BUCKET_NAME" {
+  description = "S3 bucket name for storage"
+  type        = string
+  default     = "pixel-monitor-storage-bucket"
+}
+
+variable "allowed_hosts" {
+  description = "Comma-separated list of allowed hosts for Django"
+  type        = string
+  # for testing, allow all hosts.
+  # In production, this should be set to the ALB DNS name or a domain name pointing to it.
+  # default = "*"
+
+  default     = "pixel-monitor-default-alb-537414936.us-east-1.elb.amazonaws.com"
+
 }

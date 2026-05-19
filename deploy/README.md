@@ -106,3 +106,188 @@ psql
 # \dt
 ```
 
+## ECR
+Login
+```sh
+aws ecr get-login-password --region $AWS_REGION | \
+docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+```
+Build, tag, push:
+```sh
+aws ecr create-repository --repository-name $APP_NAME --region $AWS_REGION
+
+docker build -t $APP_NAME .
+# docker run --rm -it --entrypoint sh $APP_NAME
+
+docker tag $APP_NAME:latest $IMAGE_URI
+
+docker push $IMAGE_URI
+# docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:v1
+
+```
+
+
+## ECS
+
+Make sure give inbound access to ecs in rds sg.
+
+### run exec commands
+We could run `python manage.py migrate` or `python manage.py collectstatic --noinput`:
+```sh
+aws ecs list-tasks \
+  --cluster $CLUSTER_NAME \
+  --service-name $SERVICE_NAME \
+  --region $AWS_REGION
+
+TASK_ID=24631f434ae2493c8dbcbd8917440d0b
+
+aws ecs execute-command \
+  --cluster $CLUSTER_NAME \
+  --task $TASK_ID \
+  --container api \
+  --interactive \
+  --command "/bin/sh" \
+  --region $AWS_REGION
+
+```
+
+S3
+
+```sh
+aws ecs list-task-definitions --region us-east-1
+
+TASK_DEF="arn:aws:ecs:us-east-1:802838070254:task-definition/pixel-monitor-default-task:7"
+
+aws ecs describe-task-definition \
+  --task-definition $TASK_DEF \
+  --region us-east-1
+
+# cat > s3-policy.json <<EOF
+# {
+#   "Version": "2012-10-17",
+#   "Statement": [
+#     {
+#       "Sid": "S3StaticAccess",
+#       "Effect": "Allow",
+#       "Action": [
+#         "s3:GetObject",
+#         "s3:PutObject",
+#         "s3:DeleteObject",
+#         "s3:ListBucket"
+#       ],
+#       "Resource": [
+#         "arn:aws:s3:::pixel-monitor-storage-bucket",
+#         "arn:aws:s3:::pixel-monitor-storage-bucket/*"
+#       ]
+#     }
+#   ]
+# }
+# EOF
+
+# aws iam put-role-policy \
+#   --role-name ecs-task-role \
+#   --policy-name pixel-monitor-s3-policy \
+#   --policy-document file://s3-policy.json
+
+```
+
+S3 public policy
+```sh
+cat > public-static-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadStatic",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::pixel-monitor-storage-bucket/static/*"
+    }
+  ]
+}
+EOF
+
+
+aws s3api put-bucket-policy \
+  --bucket pixel-monitor-storage-bucket \
+  --policy file://public-static-policy.json
+
+# verify
+aws s3api get-bucket-policy \
+  --bucket pixel-monitor-storage-bucket
+
+# test public access
+curl -I https://pixel-monitor-storage-bucket.s3.amazonaws.com/static/admin/css/base.css
+```
+
+
+
+## Frontend
+
+```sh
+
+aws s3 mb s3://pixel-monitor-frontend
+
+# enable static website hosting
+aws s3 website s3://pixel-monitor-frontend \
+  --index-document index.html \
+  --error-document index.html
+
+# make bucket public
+cat > frontend-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicRead",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::pixel-monitor-frontend/*"
+    }
+  ]
+}
+EOF
+
+aws s3api put-bucket-policy \
+  --bucket pixel-monitor-frontend \
+  --policy file://frontend-policy.json
+```
+
+Now 
+```sh
+npm run build
+
+# upload build
+aws s3 sync dist/ s3://pixel-monitor-frontend
+
+```
+
+open website:
+```sh
+
+http://pixel-monitor-frontend.s3-website-us-east-1.amazonaws.com
+
+```
+
+## checklist
+Having the `ALB_DNS` we need to set it in 
+```sh
+# 1) ./frontend/.env
+VITE_API_URL=http://{ALB_DNS}/api
+
+# next, build & push to S3.
+
+# 2) allowed_hosts as ENV variable to ECS/django
+allowed_hosts=ALB_DNS
+```
+
+Run migration in ECS TASK:
+```sh
+# python manage.py makemigrations
+python manage.py migrate
+
+python manage.py createsuperuser
+
+```
