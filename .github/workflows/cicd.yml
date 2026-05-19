@@ -45,4 +45,4 @@ jobs:
             --name $CLUSTER_NAME
 
       - run: |
-          kubectl rollout restart deployment/django-app
+          kubectl rollout restart deploy/pixel-monitor
