@@ -15,6 +15,7 @@ env:
   CLUSTER_NAME: pixel-monitor
   ECR_REPOSITORY: pixel-monitor
   CONTAINER_NAME: pixel-backend
+  ROLE_NAME: github-actions-eks-deployer
 
 jobs:
   deploy:
@@ -23,10 +24,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug OIDC token
+        run: |
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL=$ACTIONS_ID_TOKEN_REQUEST_URL"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN=$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${AWS_ACCOUNT_ID}:role/github-actions-eks-deployer
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ROLE_NAME}
+          aws-region: ${AWS_REGION}
 
       - uses: aws-actions/amazon-ecr-login@v2
 
