@@ -1,0 +1,40 @@
+replicaCount: 1
+
+image:
+  repository: 802838070254.dkr.ecr.us-east-1.amazonaws.com/pixel-monitor
+  tag: fb57bc7764c8ac1fd7b49a366fe1a764d62cf99f
+  pullPolicy: Always
+
+serviceAccount:
+  create: false
+  name: pod-ident-sa
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8000
+
+containerPort: 8000
+
+env:
+  ALLOWED_HOSTS: "*"
+  CORS_ALLOWED_ORIGINS: "http://pixel-monitor-frontend.s3-website-us-east-1.amazonaws.com"
+  DB_PORT: "5432"
+
+configMaps:
+  - db-config
+  - s3-config
+
+secrets:
+  DB_PASS:
+    name: app-db-secret
+    key: DB_PASS
+  DJANGO_SECRET_KEY:
+    name: django-secret-key
+    key: DJANGO_SECRET_KEY
+
+livenessProbe:
+  path: /healthz/
+  initialDelaySeconds: 10
+  periodSeconds: 20
+  failureThreshold: 3
