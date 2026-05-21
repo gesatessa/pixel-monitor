@@ -6,6 +6,10 @@ from rest_framework.response import Response
 from core.models import Movie, Review, Like
 from .serializers import EmptySerializer, MovieSerializer, CreateReviewSerializer
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -32,6 +36,19 @@ class MovieViewSet(viewsets.ModelViewSet):
 
         return MovieSerializer
 
+    # 📢 Override perform_create to log movie creation with user info
+    # otherwise, this works behind the scenes and we have no visibility into which user created which movie.
+    def perform_create(self, serializer):
+        movie = serializer.save()
+
+        logger.info(
+            "Movie created id=%s title='%s' by user_id=%s (email=%s)",
+            movie.id,
+            movie.title,
+            self.request.user.id,
+            self.request.user.email,
+        )
+
     @action(
         detail=True,
         methods=['post'],
@@ -48,8 +65,18 @@ class MovieViewSet(viewsets.ModelViewSet):
 
         if not created:
             like.delete()
+            logger.info(
+                "User %s unliked movie_id=%s",
+                request.user.id,
+                movie.id,
+            )
             return Response({'liked': False}, status=status.HTTP_200_OK)
 
+        logger.info(
+            "User %s liked movie_id=%s",
+            request.user.id,
+            movie.id,
+        )
         return Response({'liked': True}, status=status.HTTP_201_CREATED)
 
     @action(
@@ -71,11 +98,21 @@ class MovieViewSet(viewsets.ModelViewSet):
                 **serializer.validated_data,
             )
         except IntegrityError:
+            logger.warning(
+                "Duplicate review attempt user_id=%s movie_id=%s",
+                request.user.id,
+                movie.id,
+            )
             return Response(
                 {'detail': 'You already reviewed this movie.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        logger.info(
+            "User %s reviewed movie_id=%s",
+            request.user.id,
+            movie.id,
+        )
         return Response(
             {
                 'id': review.id,

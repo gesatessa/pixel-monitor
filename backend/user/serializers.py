@@ -4,6 +4,10 @@ from django.utils.translation import gettext as _
 
 from rest_framework import serializers
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class UserSerializer(serializers.ModelSerializer):
     
@@ -20,6 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         # if the validation works, call `.create_user()` method from the UserManager
+        logger.info(f"Creating user with email: {validated_data['email']}")
         return get_user_model().objects.create_user(**validated_data)
     
     def update(self, instance, validated_data):
@@ -48,8 +53,10 @@ class AuthTokenSerializer(serializers.Serializer):
         user = authenticate(request=None, username=email, password=password)
 
         if not user:
+            logger.warning(f"Failed authentication attempt with email: {email}")
             msg = _('provided credentials dont match')
             raise serializers.ValidationError(msg, code='authorization')
         
         attrs['user'] = user
+        logger.info(f"Authenticating user with email: {email}")
         return attrs

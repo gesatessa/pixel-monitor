@@ -1,5 +1,9 @@
 from django.contrib.auth.base_user import BaseUserManager
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -7,7 +11,7 @@ class UserManager(BaseUserManager):
             raise ValueError("Email is required")
 
         email = self.normalize_email(email)
-        print('+++ ', email, ' +++')
+        logger.info(f"Creating user with email: {email}")
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)

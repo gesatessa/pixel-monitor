@@ -59,25 +59,22 @@ docker compose run --rm api python manage.py startapp user
 
 Now we can create/register a user. Also possible via the api doc `http://localhost:8000/api/docs/`
 ```sh
+export PAYLOAD='{
+  "email": "angel@info.io",
+  "password": "Texas429"
+}'
+
 curl -X 'POST' \
   'http://localhost:8000/api/user/create/' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
-  -d '{
-  "email": "angel@hotmil.com",
-  "password": "Texas429"
-}'
+  -d "$PAYLOAD"
 ```
 
 ### Auth
 
 A user can login:
 ```sh
-export PAYLOAD='{
-  "email": "angel@hotmil.io",
-  "password": "Texas429"
-}'
-
 curl -X 'POST' \
   'http://localhost:8000/api/user/token/' \
   -H 'accept: application/json' \
@@ -315,3 +312,10 @@ run tests
 build docker image
 collectstatic inside image
 push image to ECR
+
+## logging
+
+Production apps should crash fast on invalid configuration.
+App should fail immediately and loudly during startup.
+
+⚠️ Gunicorn does NOT serve Django static files automatically. `runserver` does.
