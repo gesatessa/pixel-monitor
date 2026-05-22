@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pixel-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pixel-monitor
+  template:
+    metadata:
+      labels:
+        app: pixel-monitor
+    spec:
+      serviceAccountName: pod-ident-sa
+      containers:
+        - name: pixel-backend
+          image: 802838070254.dkr.ecr.us-east-1.amazonaws.com/pixel-monitor:fb57bc7764c8ac1fd7b49a366fe1a764d62cf99f
+          imagePullPolicy: Always # IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: db-config
+            - configMapRef:
+                name: s3-config
+          env:
+            - name: ALLOWED_HOSTS
+            # e.g., the ingress alb dns
+              value: "k8s-default-pixelmon-45cde402f9-273315686.us-east-1.elb.amazonaws.com"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "http://pixel-monitor-frontend.s3-website-us-east-1.amazonaws.com"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: app-db-secret
+                  key: DB_PASS
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret-key
+                  key: DJANGO_SECRET_KEY
+          # startupProbe:
+          #   httpGet:
+          #     path: /healthz/
+          #     port: 8000
+          #   failureThreshold: 30
+          #   periodSeconds: 5
+          # readinessProbe:
+          #   httpGet:
+          #     path: /healthz/
+          #     port: 8000
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 10
+          #   failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz/
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pixel-monitor-service
+spec:
+  selector:
+    app: pixel-monitor
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: LoadBalancer

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memory-hog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memory-hog
+  template:
+    metadata:
+      labels:
+        app: memory-hog
+    spec:
+      containers:
+        - name: memory-hog
+          image: python:3.11-slim
+          command:
+            - python
+            - -c
+            - |
+              import time
+
+              data = []
+
+              chunk_size_mb = 1
+
+              while True:
+                  data.append(" " * (chunk_size_mb * 1024 * 1024))
+                  print(f"Allocated {len(data)} MB")
+                  time.sleep(5)
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"

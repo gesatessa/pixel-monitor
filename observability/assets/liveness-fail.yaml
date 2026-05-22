@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liveness-fail
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liveness-fail
+  template:
+    metadata:
+      labels:
+        app: liveness-fail
+    spec:
+      containers:
+        - name: app
+          image: python:3.11-slim
+          command:
+            - python
+            - -c
+            - |
+              from http.server import BaseHTTPRequestHandler, HTTPServer
+
+              class Handler(BaseHTTPRequestHandler):
+                  def do_GET(self):
+                      self.send_response(500)
+                      self.end_headers()
+                      self.wfile.write(b"BAD")
+
+              HTTPServer(("", 8080), Handler).serve_forever()
+
+          ports:
+            - containerPort: 8080
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5

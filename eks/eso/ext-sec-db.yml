@@ -1,0 +1,18 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: app-db-secret
+  namespace: default
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: app-db-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: DB_PASS
+      remoteRef:
+        key: prod/app/db
+        property: DB_PASS

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-hog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cpu-hog
+  template:
+    metadata:
+      labels:
+        app: cpu-hog
+    spec:
+      containers:
+        - name: cpu-hog
+          image: python:3.11-slim
+          command:
+            - python
+            - -c
+            - |
+              while True:
+                  pass
+          resources:
+            requests:
+              cpu: "100m"
+            limits:
+              cpu: "200m"

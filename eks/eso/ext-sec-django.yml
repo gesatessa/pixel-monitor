@@ -1,0 +1,21 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: django-secret-key
+  namespace: default
+spec:
+  refreshInterval: 1h
+
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+
+  target:
+    name: django-secret-key
+    creationPolicy: Owner
+
+  data:
+    - secretKey: DJANGO_SECRET_KEY
+      remoteRef:
+        key: prod/app/django
+        property: DJANGO_SECRET_KEY

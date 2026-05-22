@@ -64,10 +64,9 @@ export PAYLOAD='{
   "password": "Texas429"
 }'
 
-curl -X 'POST' \
-  'http://localhost:8000/api/user/create/' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
+curl -X POST \
+  "http://$H_/api/user/create/" \
+  -H "Content-Type: application/json" \
   -d "$PAYLOAD"
 ```
 
@@ -84,8 +83,9 @@ curl -X 'POST' \
   "password": "Kanada71"
 }'
 
+# H_=k8s-default-pixelmon-45cde402f9-889479856.us-east-1.elb.amazonaws.com
 curl -X 'POST' \
-  'http://localhost:8000/api/user/token/' \
+  "http://${H_}/api/user/token/" \
   -H 'Content-Type: application/json' \
   -d "$PAYLOAD"
 
@@ -94,8 +94,8 @@ curl -X 'POST' \
 # }
 
 TOKEN=b10d148ed1c6564237ae070569a1cffb27953716
-curl -i http://localhost:8000/api/user/me/ \
-  -H "Authorization: Token $TOKEN"
+curl "http://$H_/api/user/me/" \
+  -H "Authorization: Token $ADMIN_TOKEN"
 
 # update
 curl -X 'PATCH' \
@@ -149,8 +149,12 @@ Routers automatically generate URL patterns for ViewSets and custom @action rout
 curl http://localhost:8000/api/movies/3/ | jq
 
 # like a movie
-curl -X POST http://localhost:8000/api/movies/1/like/ \
-  -H "Authorization: Token $TOKEN"
+curl -X 'POST' \
+  'http://localhost:8000/api/movies/1/like/' \
+  -H 'accept: */*' \
+  -H "Authorization: Token $TOKEN" \
+  -d ''
+
 
 # post a review
 curl -X POST http://localhost:8000/api/movies/1/review/ \
@@ -168,7 +172,7 @@ Image uploads require multipart/form-data.
 ```sh
 # @ => upload this file
 curl -X POST \
-  http://localhost:8000/api/movies/ \
+  "http://$H_/api/movies/" \
   -H "Authorization: Token $ADMIN_TOKEN" \
   -F "title=Whiplash" \
   -F "description=Jazz drummer pushed to the edge" \
@@ -180,7 +184,7 @@ curl -X POST \
 # chown -R 1000:1000 /code/media
 
 curl -X POST \
-  http://localhost:8000/api/movies/ \
+  "http://$H_/api/movies/" \
   -H "Authorization: Token $ADMIN_TOKEN" \
   -F "title=Marriage Story" \
   -F "description=An emotional drama that follows a couple navigating love, separation, and the challenges of divorce." \
@@ -191,29 +195,28 @@ curl -X POST \
 curl http://localhost:8000/api/user/me/ \
   -H 'Authorization: Token $ADMIN_TOKEN'
 
-curl -X 'POST' \
-  'http://localhost:8000/api/movies/1/review/' \
+curl -X POST \
+  "http://$H_/api/movies/1/review/" \
   -H "Authorization: Token $ADMIN_TOKEN" \
-  -H 'Content-Type: application/json' \
+  -H "Content-Type: application/json" \
   -d '{
-  "rating": 4,
-  "comment": "A gripping story about ambition, discipline, and obsession."
-}'
+    "rating": 4,
+    "comment": "A gripping story about ambition, discipline, and obsession."
+  }'
 
 curl -X 'POST' \
-  'http://localhost:8000/api/movies/1/like/' \
-  -H 'accept: */*' \
-  -H "Authorization: Token $ADMIN_TOKEN" \
-  -d ''
-
-curl -X 'POST' \
-  'http://localhost:8000/api/movies/2/review/' \
+  "http://$H_/api/movies/2/review/" \
   -H "Authorization: Token $ADMIN_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
   "rating": 5,
   "comment": "Emotional, raw, and deeply human from start to finish."
 }'
+
+curl -X POST \
+  "http://$H_/api/movies/2/like/" \
+  -H "Authorization: Token $TOKEN"
+
 
 curl  'http://localhost:8000/api/movies/' | jq
 

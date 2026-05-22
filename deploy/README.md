@@ -119,10 +119,11 @@ aws ecr create-repository --repository-name $APP_NAME --region $AWS_REGION
 docker build -t $APP_NAME .
 # docker run --rm -it --entrypoint sh $APP_NAME
 
-docker tag $APP_NAME:latest $IMAGE_URI
+IMG_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:v1
 
-docker push $IMAGE_URI
-# docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:v1
+docker tag $APP_NAME:latest $IMG_URI
+
+docker push $IMG_URI
 
 ```
 
@@ -134,6 +135,8 @@ Make sure give inbound access to ecs in rds sg.
 ### run exec commands
 We could run `python manage.py migrate` or `python manage.py collectstatic --noinput`:
 ```sh
+source ./deploy/.env
+
 aws ecs list-tasks \
   --cluster $CLUSTER_NAME \
   --service-name $SERVICE_NAME \
@@ -290,4 +293,136 @@ python manage.py migrate
 
 python manage.py createsuperuser
 
+```
+
+## Ingress
+
+Check whether OIDC exists:
+```sh
+aws eks describe-cluster \
+  --name $CLUSTER_NAME \
+  --query "cluster.identity.oidc.issuer" \
+  --output text
+
+# https://oidc.eks.us-east-1.amazonaws.com/id/3532B1682C70C773081F3B5C7D50669F
+
+aws iam list-open-id-connect-providers
+
+# associate it:
+eksctl utils associate-iam-oidc-provider \
+  --region $AWS_REGION \
+  --cluster $CLUSTER_NAME \
+  --approve
+``
+
+
+```sh
+curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json
+
+# create policy
+aws iam create-policy \
+  --policy-name AWSLoadBalancerControllerIAMPolicy \
+  --policy-document file://iam_policy.json
+
+rm iam_policy.json
+
+# create IAM SA
+eksctl create iamserviceaccount \
+  --cluster=$CLUSTER_NAME \
+  --namespace=kube-system \
+  --name=aws-load-balancer-controller \
+  --attach-policy-arn=arn:aws:iam::$AWS_ACCOUNT_ID:policy/AWSLoadBalancerControllerIAMPolicy \
+  --override-existing-serviceaccounts \
+  --region $AWS_REGION \
+  --approve
+
+# install controller via helm
+helm repo add eks https://aws.github.io/eks-charts
+helm repo update
+
+export VPC_ID=$(aws eks describe-cluster \
+  --name $CLUSTER_NAME \
+  --region $AWS_REGION \
+  --query "cluster.resourcesVpcConfig.vpcId" \
+  --output text)
+echo $VPC_ID
+
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n kube-system \
+  --set clusterName=$CLUSTER_NAME \
+  --set serviceAccount.create=false \
+  --set serviceAccount.name=aws-load-balancer-controller \
+  --set region=$AWS_REGION \
+  --set vpcId=$VPC_ID
+
+# verify
+kubectl get deployment -n kube-system aws-load-balancer-controller -w
+
+
+# verify ingress class
+kubectl get ingressclass
+# NAME   CONTROLLER            PARAMETERS   AGE
+# alb    ingress.k8s.aws/alb   <none>       56m
+
+```
+
+Create ingress:
+```sh
+k apply -f ingress.yml
+
+# after about 2 min
+k get ing
+# NAME                    CLASS   HOSTS   ADDRESS                                                                 PORTS
+# pixel-monitor-ingress   alb     *       k8s-default-pixelmon-7726c70952-540144258.us-east-1.elb.amazonaws.com   80
+
+nslookup k8s-default-pixelmon-7726c70952-540144258.us-east-1.elb.amazonaws.com
+# Server:         127.0.0.53
+# Address:        127.0.0.53#53
+
+# Non-authoritative answer:
+# Name:   k8s-default-pixelmon-7726c70952-540144258.us-east-1.elb.amazonaws.com
+# Address: 34.202.139.111
+# Name:   k8s-default-pixelmon-7726c70952-540144258.us-east-1.elb.amazonaws.com
+# Address: 100.25.94.12
+
+ALB_DNS_NAME=k8s-default-pixelmon-7726c70952-540144258.us-east-1.elb.amazonaws.com
+curl -i http://$ALB_DNS_NAME/healthz/
+```
+
+Check the passage, pod ip, node ip, / in ingress, and the path we set in pod's manifest in `livenessProbe.httpHeaders`
+```sh
+kgp -o wide
+# NAME                             READY   STATUS    RESTARTS   AGE     IP               NODE                          
+# pixel-monitor-5465cb7477-28pvl   1/1     Running   0          3m38s   192.168.40.156   ip-192-168-37-220.ec2.internal
+
+kubectl describe ing pixel-monitor-ingress
+# Name:             pixel-monitor-ingress
+# Labels:           <none>
+# Namespace:        default
+# Address:          
+# Ingress Class:    alb
+# Default backend:  <default>
+# Rules:
+#   Host        Path  Backends
+#   ----        ----  --------
+#   *           
+#               /   pixel-monitor-service:80 (192.168.40.156:8000)
+# Annotations:  alb.ingress.kubernetes.io/healthcheck-path: /healthz/
+#               alb.ingress.kubernetes.io/scheme: internet-facing
+#               alb.ingress.kubernetes.io/target-type: ip
+# Events:       <none>
+```
+
+### frontend build
+
+```sh
+# replace this in .env
+VITE_API_URL=http://YOUR_ALB_DNS/api
+
+npm run build
+
+# upload build
+aws s3 sync dist/ s3://pixel-monitor-frontend
+
+# http://pixel-monitor-frontend.s3-website-us-east-1.amazonaws.com
 ```

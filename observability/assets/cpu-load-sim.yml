@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-load-sim
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cpu-load-sim
+  template:
+    metadata:
+      labels:
+        app: cpu-load-sim
+    spec:
+      containers:
+        - name: cpu-load-sim
+          image: python:3.11-slim
+          command:
+            - python
+            - -c
+            - |
+              import time
+              import math
+
+              target_load = 0.5  # 50% CPU-ish behavior
+
+              while True:
+                  start = time.time()
+
+                  # CPU work
+                  while (time.time() - start) < target_load:
+                      math.sqrt(12345.6789)
+
+                  # rest period
+                  time.sleep(1 - target_load)
+          resources:
+            requests:
+              cpu: "100m"
+            limits:
+              cpu: "500m"
