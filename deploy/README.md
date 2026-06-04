@@ -121,7 +121,7 @@ docker build -t $APP_NAME .
 
 IMG_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:v1
 
-docker tag $APP_NAME:latest $IMG_URI
+docker tag ${APP_NAME}:latest $IMG_URI
 
 docker push $IMG_URI
 

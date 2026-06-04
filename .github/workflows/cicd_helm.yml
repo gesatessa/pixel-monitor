@@ -11,7 +11,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  AWS_ACCOUNT_ID: 802838070254
+  AWS_ACCOUNT_ID: 865274826587
   CLUSTER_NAME: pixel-monitor
   ECR_REPOSITORY: pixel-monitor
   ROLE_NAME: github-actions-eks-deployer
