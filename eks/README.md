@@ -5,8 +5,8 @@ source .env
 eksctl create cluster \
   --name $CLUSTER_NAME \
   --region $AWS_REGION \
-  --nodes 2 \
-  --node-type t3.large \
+  --nodes 1 \
+  --node-type t3.small \
   --managed \
   --spot
 
@@ -62,11 +62,16 @@ export SUBNET_IDS=$(aws ec2 describe-subnets \
 
 printf "private EKS subnets => %s\n" "$SUBNET_IDS"
 
+SUBNET_IDS=$(echo "$SUBNET_IDS" | tr '\t' ' ')
+printf '%q\n' "$SUBNET_IDS"
+
+# Key fix: in zsh, use ${=SUBNET_IDS} when you need a space-separated variable expanded into multiple CLI args.
+
 DB_SUBNET_GROUP_NAME=pixel-monitor
 aws rds create-db-subnet-group \
   --db-subnet-group-name $DB_SUBNET_GROUP_NAME \
   --db-subnet-group-description "RDS subnet group for EKS app" \
-  --subnet-ids $SUBNET_IDS \
+  --subnet-ids ${=SUBNET_IDS} \
   --region $AWS_REGION
 
 # create DB instance in that subnet group (takes ~5min)
@@ -83,7 +88,7 @@ aws rds create-db-instance \
   --db-subnet-group-name "$DB_SUBNET_GROUP_NAME" \
   --vpc-security-group-ids "$DB_SG_ID" \
   --no-publicly-accessible \
-  --backup-retention-period 0 \
+  --backup-retention-period 1 \
   --region "$AWS_REGION"
 
 # wait until it becomes available
@@ -103,6 +108,10 @@ echo $DB_HOST
 # save it to db.env
 # pixel-monitor-db.cf7ttjzo2qnh.us-east-1.rds.amazonaws.com
 
+# get RDS endpoint:
+aws rds describe-db-instances \
+  --query 'DBInstances[*].Endpoint.Address'
+
 export EKS_CLUSTER_SG=$(aws eks describe-cluster \
   --name $CLUSTER_NAME \
   --region $AWS_REGION \
@@ -110,13 +119,35 @@ export EKS_CLUSTER_SG=$(aws eks describe-cluster \
   --output text)
 echo $EKS_CLUSTER_SG
 
-# authorize inbound Postgres traffic from that security group:
+# authorize inbound Postgres traffic from the node's security group:
+## adds the inbound rule on the DB security group 👇 (The node is the client here; RDS is the server.)
 aws ec2 authorize-security-group-ingress \
   --group-id $DB_SG_ID \
   --protocol tcp \
   --port 5432 \
   --source-group $EKS_CLUSTER_SG \
   --region $AWS_REGION
+
+```
+
+### verify info
+```sh
+aws rds describe-db-instances \
+  --db-instance-identifier pixel-monitor-db \
+  --query 'DBInstances[0].{
+    Endpoint:Endpoint.Address,
+    Port:Endpoint.Port,
+    Status:DBInstanceStatus,
+    Engine:Engine,
+    EngineVersion:EngineVersion,
+    VpcId:DBSubnetGroup.VpcId,
+    MultiAZ:MultiAZ,
+    PubliclyAccessible:PubliclyAccessible,
+    AvailabilityZone:AvailabilityZone,
+    Subnets:DBSubnetGroup.Subnets[*].SubnetIdentifier,
+    SecurityGroups:VpcSecurityGroups[*].VpcSecurityGroupId
+  }' \
+  --output yaml
 ```
 
 ### config 
@@ -224,7 +255,7 @@ aws eks create-pod-identity-association \
   --cluster-name $CLUSTER_NAME \
   --namespace $CLUSTER_NS \
   --service-account pod-ident-sa \
-  --role-arn arn:aws:iam::$AWS_ACCOUNT_ID:role/$IAM_ROLE_NAME \
+  --role-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${IAM_ROLE_NAME}" \
   --region $AWS_REGION
 
 # check again:
@@ -517,7 +548,7 @@ EKS has:
 AWS IAM auth
 Kubernetes RBAC
 
-Your IAM role must map into Kubernetes users/groups.
+The IAM role must map into Kubernetes users/groups.
 
 ```sh
 # determine auth mode:
@@ -539,6 +570,11 @@ aws eks create-access-entry \
   --principal-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ROLE_NAME} \
   --type STANDARD
 
+# verify
+aws eks list-access-entries --cluster-name ${CLUSTER_NAME}
+
+# 👀 arn:aws:iam::802838070254:role/github-actions-eks-deployer
+
 ```
 
 👉 This IAM role is allowed to authenticate to Kubernetes.
@@ -548,6 +584,10 @@ Without this:
 - ❌ Kubernetes rejects requests
 
 #### attach K8s permissions
+
+An access entry by itself does NOT grant permissions. The role still needs either:
+- An EKS access policy association (recommended), or
+- Kubernetes groups mapped to RBAC roles.
 
 ```sh
 # ⚠️ (only for initial setup/testing)
@@ -559,13 +599,11 @@ aws eks associate-access-policy \
   --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
   --access-scope type=cluster
 
-```
+# verify
+aws eks list-associated-access-policies \
+  --cluster-name ${CLUSTER_NAME} \
+  --principal-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ROLE_NAME}
 
-Verify access entry
-```sh
-aws eks list-access-entries --cluster-name ${CLUSTER_NAME}
-
-# 👀 arn:aws:iam::802838070254:role/github-actions-eks-deployer
 ```
 
 ### GHA extra
@@ -692,6 +730,38 @@ Django migrations are usually safe, but eventually we may want:
 
 For now though, our `initContainer` approach is solid.
 
+```sh
+# psycopg.errors.ConnectionTimeout: connection timeout expired
+# django.db.utils.OperationalError: connection timeout expired
+
+# > A timeout means the TCP connection never completed.
+
+# 1: check what Django is actually using:
+kubectl get configmap db-config -o yaml
+
+# 2:
+kubectl logs pixel-monitor-66c55bcb79-kns2l -c run-migrations
+
+kubectl logs pixel-monitor-66c55bcb79-kns2l -c run-migrations --previous
+
+kubectl set env deployment/pixel-monitor --list
+
+## DNS resolution failure
+kubectl run dns-test --image=busybox:1.36 --rm -it --restart=Never -- sh
+
+### If DNS fails, that's the issue: nslookup <rds-endpoint>
+### If the RDS endpoint resolves to a private IP => DNS is working.
+
+## network connectivity test
+kubectl run netshoot \
+  --image=nicolaka/netshoot \
+  --rm -it --restart=Never -- bash
+
+### nc -vz <rds-endpoint> 5432
+### If it hangs and times out, security groups or routing are blocking traffic. (port 5432 failed: Operation timed out)
+### expected: Connection to <rds-endpoint> (192.168.89.11) 5432 port [tcp/postgresql] succeeded!
+
+```
 
 ## HPA
 
