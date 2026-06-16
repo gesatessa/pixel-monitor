@@ -458,6 +458,15 @@ EOF
 aws iam create-role \
   --role-name ${ROLE_NAME} \
   --assume-role-policy-document file://trust-policy.json
+
+```
+
+If the `trust-policy.json` was corrupt, for example the env variables like `REPO_NAME` were not set, you can re-create the trust-policy.json & update the assume role policy:
+```sh
+aws iam update-assume-role-policy \
+  --role-name ${ROLE_NAME} \
+  --policy-document file://trust-policy.json
+
 ```
 
 ### 3. attach permissions

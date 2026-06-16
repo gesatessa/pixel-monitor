@@ -229,7 +229,7 @@ curl -I https://pixel-monitor-storage-bucket.s3.amazonaws.com/static/admin/css/b
 ## Frontend
 
 ```sh
-
+# make bucket
 aws s3 mb s3://pixel-monitor-frontend
 
 # enable static website hosting

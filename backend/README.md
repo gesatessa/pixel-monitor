@@ -68,6 +68,11 @@ curl -X POST \
   "http://$H_/api/user/create/" \
   -H "Content-Type: application/json" \
   -d "$PAYLOAD"
+
+curl -X POST \
+  "http://$H_/api/user/create/" \
+  -H "Content-Type: application/json" \
+  -d @payloads/user1.json
 ```
 
 ### Auth
