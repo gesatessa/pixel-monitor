@@ -5,13 +5,13 @@ source .env
 eksctl create cluster \
   --name $CLUSTER_NAME \
   --region $AWS_REGION \
-  --nodes 1 \
+  --nodes 2 \
   --node-type t3.small \
   --managed \
   --spot
 
 # ❌ DELETE the cluster ❌
-# eksctl delete cluster --name $CLUSTER_NAME --region $AWS_REGION
+eksctl delete cluster --name $CLUSTER_NAME --region $AWS_REGION
 
 aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
 
@@ -29,6 +29,52 @@ eksctl create nodegroup \
   -- spot
 
 ```
+## CA
+
+```sh
+eksctl utils associate-iam-oidc-provider \
+  --cluster $CLUSTER_NAME \
+  --region $AWS_REGION \
+  --approve
+
+aws iam create-policy \
+  --policy-name AmazonEKSClusterAutoscalerPolicy \
+  --policy-document file://cluster-autoscaler-policy.json
+
+eksctl create iamserviceaccount \
+  --cluster $CLUSTER_NAME \
+  --region $AWS_REGION \
+  --namespace kube-system \
+  --name cluster-autoscaler \
+  --attach-policy-arn arn:aws:iam::$AWS_ACCOUNT_ID:policy/AmazonEKSClusterAutoscalerPolicy \
+  --approve
+
+# install the cluster autoscaler
+## add the helm repo
+helm repo add autoscaler https://kubernetes.github.io/autoscaler
+helm repo update
+
+# install
+helm upgrade --install cluster-autoscaler autoscaler/cluster-autoscaler \
+  --namespace kube-system \
+  --set autoDiscovery.clusterName=$CLUSTER_NAME \
+  --set awsRegion=$AWS_REGION \
+  --set rbac.serviceAccount.create=false \
+  --set rbac.serviceAccount.name=cluster-autoscaler \
+  --set extraArgs.balance-similar-node-groups=true \
+  --set extraArgs.skip-nodes-with-system-pods=false \
+  --set extraArgs.skip-nodes-with-local-storage=false
+
+eksctl get nodegroup --cluster $CLUSTER_NAME --region $AWS_REGION
+
+aws eks update-nodegroup-config \
+  --cluster-name $CLUSTER_NAME \
+  --nodegroup-name $NODEGROUP_NAME \
+  --scaling-config minSize=1,maxSize=10,desiredSize=1
+
+aws autoscaling describe-auto-scaling-groups
+```
+
 ## RDS
 
 ```sh
@@ -71,7 +117,7 @@ DB_SUBNET_GROUP_NAME=pixel-monitor
 aws rds create-db-subnet-group \
   --db-subnet-group-name $DB_SUBNET_GROUP_NAME \
   --db-subnet-group-description "RDS subnet group for EKS app" \
-  --subnet-ids ${=SUBNET_IDS} \
+  --subnet-ids ${SUBNET_IDS} \
   --region $AWS_REGION
 
 # create DB instance in that subnet group (takes ~5min)
@@ -105,7 +151,7 @@ export DB_HOST=$(aws rds describe-db-instances \
 
 # save this to `db.env`
 echo $DB_HOST
-# save it to db.env
+# ⚠️ save it to db.env
 # pixel-monitor-db.cf7ttjzo2qnh.us-east-1.rds.amazonaws.com
 
 # get RDS endpoint:
@@ -152,6 +198,7 @@ aws rds describe-db-instances \
 
 ### config 
 ```sh
+# Make sure DB_HOST is set correctly.
 kubectl create configmap db-config \
   --from-env-file=db.env \
   --dry-run=client -o yaml > db-configmap.yaml
@@ -383,7 +430,7 @@ curl -i https://pixel-monitor-s3-bucket.s3.amazonaws.com/static/admin/css/base.c
 
 ```
 
-You may need to attack bucket policy
+You may need to attach bucket policy
 ```md
 {
   "Version": "2012-10-17",
