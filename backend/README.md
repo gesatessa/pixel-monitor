@@ -327,3 +327,134 @@ Production apps should crash fast on invalid configuration.
 App should fail immediately and loudly during startup.
 
 ⚠️ Gunicorn does NOT serve Django static files automatically. `runserver` does.
+
+## run locally
+
+```sh
+source .env
+# ⚠️ If you're running it on an ECS instance, make sure to add its public IP to `ALLOWED_HOSTS`
+
+
+```
+
+
+
+```sh
+# also, make sure you've givven inbound access to port 8000
+docker compose up --build
+
+curl -i 3.87.244.40:8000/healthz/
+# HTTP/1.1 200 OK
+# Date: Sun, 19 Jul 2026 15:30:31 GMT
+# Server: WSGIServer/0.2 CPython/3.12.13
+# Content-Type: application/json
+# Vary: Accept, origin, Cookie
+# Allow: OPTIONS, GET
+# X-Frame-Options: DENY
+# Content-Length: 15
+# X-Content-Type-Options: nosniff
+# Referrer-Policy: same-origin
+# Cross-Origin-Opener-Policy: same-origin
+
+# {"status":"ok"}
+
+
+docker compose exec api sh
+
+python manage.py createsuperuser
+
+# verify that the user is created in the db
+docker compose exec -it db psql -U $PG_USER -d $PG_DB
+
+```
+
+```sql
+SELECT current_database();
+SELECT current_user;
+
+-- Connect/switch to another database (psql)
+\c database_name
+
+\l            -- list databases
+\dt           --show tables
+\d table_name -- Describe a table (psql)
+```
+
+```sh
+export PAYLOAD='{
+  "email": "xman@info.xx",
+  "password": "ChangeME"
+}'
+
+H_=3.87.244.40:8000
+
+curl -X POST \
+  "http://$H_/api/user/create/" \
+  -H "Content-Type: application/json" \
+  -d "$PAYLOAD"
+
+curl -X POST \
+  "http://$H_/api/user/token/" \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d "$PAYLOAD"
+# {"token":"90c5d3219c25214201c2056807c5a869e88dc5bc"}%
+
+curl -X POST \
+  "http://$H_/api/movies/" \
+  -H "Authorization: Token $ADMIN_TOKEN" \
+  -F "title=Whiplash" \
+  -F "description=Jazz drummer pushed to the edge" \
+  -F "release_year=2014" \
+  -F "poster=@./posters/whiplash.png"
+
+curl -X POST \
+  "http://$H_/api/movies/34/review/" \
+  -H "Authorization: Token $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 4,
+    "comment": "A gripping story about ambition, discipline, and obsession."
+  }'
+
+curl -X POST \
+  "http://$H_/api/movies/1/like/" \
+  -H "Authorization: Token $TOKEN"
+```
+
+### frontend
+
+```sh
+# Update package index
+sudo apt update
+
+# Install curl if you don't have it
+sudo apt install -y curl
+
+# Add the latest Node.js LTS repository
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+
+# Install Node.js (includes npm)
+sudo apt install -y nodejs
+
+node -v
+npm -v
+```
+
+```sh
+npm install
+
+# make sure in the `.env` you set this properly
+VITE_API_URL=http://3.87.244.40:8000/api
+
+npm run dev -- --host 0.0.0.0
+```
+
+as we have
+```js
+// src/api/axios.ts 👇
+const api = axios.create({
+  // baseURL: "http://localhost:8000/api",
+  baseURL: import.meta.env.VITE_API_URL,
+});
+```
