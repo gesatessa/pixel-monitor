@@ -1,0 +1,7 @@
+{
+  "Name": "__PROJECT__-frontend-oac",
+  "Description": "CloudFront access",
+  "SigningProtocol": "sigv4",
+  "SigningBehavior": "always",
+  "OriginAccessControlOriginType": "s3"
+}

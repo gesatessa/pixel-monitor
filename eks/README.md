@@ -65,6 +65,7 @@ helm upgrade --install cluster-autoscaler autoscaler/cluster-autoscaler \
   --set extraArgs.skip-nodes-with-system-pods=false \
   --set extraArgs.skip-nodes-with-local-storage=false
 
+# get CLUSTER NODEGROUP
 eksctl get nodegroup --cluster $CLUSTER_NAME --region $AWS_REGION
 
 aws eks update-nodegroup-config \
@@ -201,15 +202,16 @@ aws rds describe-db-instances \
 # Make sure DB_HOST is set correctly.
 kubectl create configmap db-config \
   --from-env-file=db.env \
-  --dry-run=client -o yaml > db-configmap.yaml
+  --dry-run=client -o yaml > ./tmp/db-configmap.yaml
 
 kubectl create configmap s3-config \
   --from-env-file=s3.env \
-  --dry-run=client -o yaml > s3-configmap.yaml
+  --dry-run=client -o yaml > ./tmp/s3-configmap.yaml
 
 
-kubectl apply -f db-configmap.yaml
-kubectl apply -f s3-configmap.yaml
+k apply -f ./tmp/
+# configmap/db-config created
+# configmap/s3-config created
 ```
 ### secret
 
@@ -272,11 +274,11 @@ iam policy + iam role & association
 
 ```sh
 # requires S3_BUCKET to be set accordingly.
-envsubst < s3-policy.json.tpl > s3-policy.json
+envsubst < s3-policy.json.tpl > ./tmp/s3-policy.json
 
 aws iam create-policy \
   --policy-name $IAM_POLICY_NAME \
-  --policy-document file://s3-policy.json
+  --policy-document file://tmp/s3-policy.json
 
 # ⚠️ The IAM role must trust Pod Identity, not EC2 or OIDC.
 # {
@@ -292,7 +294,6 @@ aws iam create-role \
 aws iam attach-role-policy \
   --role-name $IAM_ROLE_NAME \
   --policy-arn arn:aws:iam::$AWS_ACCOUNT_ID:policy/$IAM_POLICY_NAME
-
 
 aws eks list-pod-identity-associations \
   --cluster-name $CLUSTER_NAME \
@@ -422,7 +423,7 @@ k apply -f k8s.yml
 ### static files
 
 ```sh
-kubectl exec -it pixel-monitor-5995f6cd57-vx65r -- python manage.py collectstatic --noinput
+kubectl exec -it pixel-monitor-6d5647f679-swcdn -- python manage.py collectstatic --noinput
 
 # curl -i http://18.207.123.206:32341/static/admin/css/base.css
 

@@ -17,7 +17,7 @@ spec:
 
       initContainers:
         - name: run-migrations
-          image: 802838070254.dkr.ecr.us-east-1.amazonaws.com/pixel-monitor:v1
+          image: 792248863583.dkr.ecr.us-east-1.amazonaws.com/pixel-monitor/api:v1
           imagePullPolicy: Always
           command:
             - python
@@ -34,7 +34,7 @@ spec:
               # value: "k8s-default-pixelmon-45cde402f9-273315686.us-east-1.elb.amazonaws.com"
               value: "*"
             - name: CORS_ALLOWED_ORIGINS
-              value: "http://pixel-monitor-frontend.s3-website-us-east-1.amazonaws.com"
+              value: "http://pixel-monitor-frontend-xyz.s3-website-us-east-1.amazonaws.com"
             - name: DB_PORT
               value: "5432"
             - name: DB_PASS
@@ -50,7 +50,7 @@ spec:
 
       containers:
         - name: pixel-backend
-          image: 802838070254.dkr.ecr.us-east-1.amazonaws.com/pixel-monitor:v1
+          image: 792248863583.dkr.ecr.us-east-1.amazonaws.com/pixel-monitor/api:v1
           imagePullPolicy: Always # IfNotPresent
           ports:
             - containerPort: 8000
@@ -63,7 +63,8 @@ spec:
             - name: ALLOWED_HOSTS
               value: "*"
             - name: CORS_ALLOWED_ORIGINS
-              value: "http://pixel-monitor-frontend.s3-website-us-east-1.amazonaws.com"
+              # value: "http://pixel-monitor-frontend-xyz.s3-website-us-east-1.amazonaws.com"
+              value: "https://d2cdblnh2zsou2.cloudfront.net"
             - name: DB_PORT
               value: "5432"
             - name: DB_PASS

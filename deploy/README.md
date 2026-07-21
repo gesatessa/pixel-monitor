@@ -114,12 +114,12 @@ docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION
 ```
 Build, tag, push:
 ```sh
-aws ecr create-repository --repository-name $APP_NAME --region $AWS_REGION
+aws ecr create-repository --repository-name $ECR_REPO --region $AWS_REGION
 
 docker build -t $APP_NAME .
 # docker run --rm -it --entrypoint sh $APP_NAME
 
-IMG_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:v1
+IMG_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:v1
 
 docker tag ${APP_NAME}:latest $IMG_URI
 
@@ -230,14 +230,20 @@ curl -I https://pixel-monitor-storage-bucket.s3.amazonaws.com/static/admin/css/b
 
 ```sh
 # make bucket
-aws s3 mb s3://pixel-monitor-frontend
+aws s3 mb s3://pixel-monitor-frontend-xyz
 
 # enable static website hosting
-aws s3 website s3://pixel-monitor-frontend \
+aws s3 website s3://pixel-monitor-frontend-xyz \
   --index-document index.html \
   --error-document index.html
 
-# make bucket public
+# make bucket public (⚠️ check the bucket name)
+aws s3api put-public-access-block \
+  --bucket pixel-monitor-frontend-xyz \
+  --public-access-block-configuration \
+  BlockPublicPolicy=false,RestrictPublicBuckets=false,BlockPublicAcls=false,IgnorePublicAcls=false
+
+# 👇 Anyone `"Principal": "*"` on the internet can download any object in this bucket
 cat > frontend-policy.json <<EOF
 {
   "Version": "2012-10-17",
@@ -247,30 +253,38 @@ cat > frontend-policy.json <<EOF
       "Effect": "Allow",
       "Principal": "*",
       "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::pixel-monitor-frontend/*"
+      "Resource": "arn:aws:s3:::pixel-monitor-frontend-xyz/*"
     }
   ]
 }
 EOF
 
 aws s3api put-bucket-policy \
-  --bucket pixel-monitor-frontend \
+  --bucket pixel-monitor-frontend-xyz \
   --policy file://frontend-policy.json
 ```
 
-Now 
+NOTE: we're making the bucket public. That's fine for static frontend, but:
+
+👉 Better long-term setup:
+- S3 private
+- CloudFront in front
+- public via CDN only
+
+Next: 
 ```sh
 npm run build
 
 # upload build
-aws s3 sync dist/ s3://pixel-monitor-frontend
+# ⚠️ MAKE SURE `VITE_API_URL` is set properly in `frontend/.env`
+aws s3 sync dist/ s3://pixel-monitor-frontend-xyz
 
 ```
 
 open website:
-```sh
-
-http://pixel-monitor-frontend.s3-website-us-east-1.amazonaws.com
+```yml
+# 🌐
+http://pixel-monitor-frontend-xyz.s3-website-us-east-1.amazonaws.com
 
 ```
 
